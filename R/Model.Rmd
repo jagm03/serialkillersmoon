@@ -11,7 +11,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Packages
 ```{r}
-
+library(lunar)
+library(zoo)
 ```
 
 
@@ -22,7 +23,7 @@ knitr::opts_chunk$set(echo = TRUE)
 load("MOON.RData")
 ```
 
-## Preparing for model
+## Preparing factors for model
 ```{r, warning=FALSE}
 #Gender
 gender <- factor(MOON$Gender)
@@ -43,13 +44,67 @@ age.breaks <- c(0,14,64, Inf)
 age <- cut(as.numeric(MOON$Age), breaks = age.breaks)
 levels(age) <- c(levels(age),"Not specified")
 age[is.na(age)] <- "Not specified"
+
 #Method
 method <- as.factor(MOON$Method)
 levels(method) <- c(levels(method),"Not specified")
 method[is.na(method)] <- "Not specified"
+
 #Country
 country <- as.factor(MOON$Country)
-
-
 ```
+
+## Counts for model
+```{r}
+#Counts
+dL <- as.POSIXct(MOON$Date, format = "%m/%d/%Y")
+phase <- lunar.phase(dL, shift = 0, name = 8)
+dist <- lunar.distance(dL, shift = 0, name = FALSE, strict = T)
+ilu <- lunar.illumination(dL, shift = 0)
+
+#Explanatory by day
+counts1 <- as.data.frame(table(dL, gender, age))
+counts1$phase <- with(counts1, lunar.phase(as.Date(dL), shift = 0, name = 8))
+counts1$dist <- with(counts1, lunar.distance(as.Date(dL),
+                                             shift = 0, name = T, strict = T))
+counts1$ilu <- with(counts1, lunar.illumination(as.Date(dL), shift = 0))
+
+counts1$t <-  with(counts1, julian(as.Date(dL), origin = as.Date("1960-01-01")))
+counts1$month <- with(counts1, as.factor(format(as.Date(dL), "%m")))
+counts1$year <- with(counts1, as.factor(format(as.Date(dL), "%Y")))
+counts1$decade <- with(counts1, factor(as.numeric(as.character(year)) - as.numeric(as.character(year)) %% 10))
+counts1$season <- with(counts1,
+                       factor(format(as.yearqtr(as.yearmon(as.Date(dL))), "%q"), 
+                              labels = c("winter", "spring", "summer", "autumn")))
+counts1$tc <- scale(counts1$t, center = TRUE, scale = FALSE)
+```
+
+
+# Model 
+```{r}
+m1 <- glm(Freq ~ phase + dist + season + gender + age + ilu +
+                    poly(tc, 3) + 
+                    cos(2* pi * t / 365) + sin(2* pi * t / 365) +
+                    cos(4* pi * t / 365) + sin(4* pi * t / 365) + 
+                    cos(6* pi * t / 365) + sin(6* pi * t / 365),
+                  family = "quasipoisson", data = counts1)
+summary(m1)
+```
+
+## Rate Ratios
+
+```{r}
+as.data.frame(exp(coef(m1)))
+CI <- exp(confint(m1)) # It could take long
+CI
+```
+
+
+## Goodnes of fit poisson distribution
+
+```{r}
+pchisq(m1$deviance, df = m1$df.residual, lower.tail = F)
+```
+
+
 
