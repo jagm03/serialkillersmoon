@@ -1,0 +1,55 @@
+---
+title: "Modeling kill counts"
+author: "Jonatan A. González"
+date: "2025-09-05"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Packages
+```{r}
+
+```
+
+
+# Data
+
+## Loading
+```{r, eval = FALSE}
+load("MOON.RData")
+```
+
+## Preparing for model
+```{r, warning=FALSE}
+#Gender
+gender <- factor(MOON$Gender)
+levels(gender) <- c("Female", "Male", "Not specified")
+gender[is.na(gender)] <- "Not specified"
+
+#Year and decade
+year <- as.factor(MOON$Year)
+decade <- factor(MOON$Year - MOON$Year %% 10)
+
+#Race
+race <- as.factor(MOON$Race)
+levels(race) <- c(levels(race),"Not specified")
+race[is.na(race)] <- "Not specified"
+
+#Age
+age.breaks <- c(0,14,64, Inf)
+age <- cut(as.numeric(MOON$Age), breaks = age.breaks)
+levels(age) <- c(levels(age),"Not specified")
+age[is.na(age)] <- "Not specified"
+#Method
+method <- as.factor(MOON$Method)
+levels(method) <- c(levels(method),"Not specified")
+method[is.na(method)] <- "Not specified"
+#Country
+country <- as.factor(MOON$Country)
+
+
+```
+
