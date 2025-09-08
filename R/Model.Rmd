@@ -13,6 +13,10 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(lunar)
 library(zoo)
+library(lmtest)
+library(sandwich)
+library(car)
+library(broom)
 ```
 
 
@@ -105,6 +109,60 @@ CI
 ```{r}
 pchisq(m1$deviance, df = m1$df.residual, lower.tail = F)
 ```
+
+
+# DIAGNOSIS
+
+## Nonnegative counts 
+```{r}
+summary(counts1$Freq)
+any(counts1$Freq < 0) # debe ser FALSE
+all(counts1$Freq %% 1 == 0) # TRUE si todos son enteros
+```
+
+
+## Autocorrelation
+```{r}
+m1_pois <- update(m1, family = poisson)
+rp <- residuals(m1_pois, type = "pearson")
+res_day <- tapply(rp, counts1$t, mean, na.rm = TRUE)
+
+lm_res <- lm(res_day ~ 1)
+dwtest(lm_res) 
+```
+
+## HAC residuals
+
+```{r}
+# Matriz HAC (Newey–West)
+vc_hac <- vcovHAC(m1_pois)
+
+# Test de coeficientes con errores HAC
+coeftest(m1_pois, vcov. = vc_hac)
+```
+
+
+## Colineality
+```{r}
+vif(m1)
+```
+
+#Robustness
+```{r}
+# Days with no outliers (>10 homicides)
+counts1_no_out <- subset(counts1, Freq <= 10)
+
+# Reajustar el modelo
+m1_no_out <- update(m1, data = counts1_no_out)
+summary(m1_no_out)
+
+# Compare moon phases coefficients
+coef_out <- tidy(m1_no_out)[grep("phase", tidy(m1_no_out)$term), ]
+coef_in  <- tidy(m1)[grep("phase", tidy(m1)$term), ]
+
+list(original = coef_in, sin_outliers = coef_out)
+```
+
 
 
 
