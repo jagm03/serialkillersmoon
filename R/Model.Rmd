@@ -160,7 +160,7 @@ summary(m1_no_out)
 coef_out <- tidy(m1_no_out)[grep("phase", tidy(m1_no_out)$term), ]
 coef_in  <- tidy(m1)[grep("phase", tidy(m1)$term), ]
 
-list(original = coef_in, sin_outliers = coef_out)
+list(original = coef_in, no_outliers = coef_out)
 ```
 
 
